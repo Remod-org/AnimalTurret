@@ -1,7 +1,7 @@
 ﻿#region License (GPL v3)
 /*
-    NextGenPVE - Prevent damage to players and objects in a Rust PVE environment
-    Copyright (c) 2020 RFC1920 <desolationoutpostpve@gmail.com>
+    AnimalTurret - Make Rust autoturrets target animals (again)
+    Copyright (c) 2021 RFC1920 <desolationoutpostpve@gmail.com>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
