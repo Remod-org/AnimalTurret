@@ -1,4 +1,4 @@
-# AnimalTurret
+# AnimalTurret for Rust
 Make autoturrets target animals in range
 
 The range matches what is in the game code for the turrets for all other targets (30m).
