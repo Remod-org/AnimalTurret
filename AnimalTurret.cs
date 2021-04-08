@@ -23,18 +23,22 @@
 using Newtonsoft.Json;
 using Oxide.Core;
 using Oxide.Core.Libraries.Covalence;
+using Oxide.Core.Plugins;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.1")]
-    [Description("Make autoturrets target animals in range")]
+    [Info("AnimalTurret", "RFC1920", "1.0.2")]
+    [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
         private ConfigData configData;
         private List<uint> disabledTurrets = new List<uint>();
         public static AnimalTurret Instance;
+
+        [PluginReference]
+        private readonly Plugin Friends, Clans, RustIO;
 
         #region Message
         private string Lang(string key, string id = null, params object[] args) => string.Format(lang.GetMessage(key, this, id), args);
@@ -61,11 +65,14 @@ namespace Oxide.Plugins
             {
                 if (!disabledTurrets.Contains(t.net.ID))
                 {
-                    disabledTurrets.Add(t.net.ID);
-                    var at = t.gameObject.GetComponent<AnimalTarget>();
-                    if (at != null) UnityEngine.Object.Destroy(at);
-                    SaveData();
-                    Message(player.IPlayer, "disabled");
+                    if (player.userID == t.OwnerID || IsFriend(player.userID, t.OwnerID))
+                    {
+                        disabledTurrets.Add(t.net.ID);
+                        var at = t.gameObject.GetComponent<AnimalTarget>();
+                        if (at != null) UnityEngine.Object.Destroy(at);
+                        SaveData();
+                        Message(player.IPlayer, "disabled");
+                    }
                 }
             }
         }
@@ -79,12 +86,60 @@ namespace Oxide.Plugins
             {
                 if (disabledTurrets.Contains(t.net.ID))
                 {
-                    disabledTurrets.Remove(t.net.ID);
-                    t.gameObject.AddComponent<AnimalTarget>();
-                    SaveData();
-                    Message(player.IPlayer, "enabled");
+                    if (player.userID == t.OwnerID || IsFriend(player.userID, t.OwnerID))
+                    {
+                        disabledTurrets.Remove(t.net.ID);
+                        t.gameObject.AddComponent<AnimalTarget>();
+                        SaveData();
+                        Message(player.IPlayer, "enabled");
+                    }
                 }
             }
+        }
+
+        private bool IsFriend(ulong playerid, ulong ownerid)
+        {
+            if (!configData.HonorRelationships) return false;
+
+            if (configData.useFriends && Friends != null)
+            {
+                var fr = Friends?.CallHook("AreFriends", playerid, ownerid);
+                if (fr != null && (bool)fr)
+                {
+                    return true;
+                }
+            }
+            if (configData.useClans && Clans != null)
+            {
+                string playerclan = (string)Clans?.CallHook("GetClanOf", playerid);
+                string ownerclan = (string)Clans?.CallHook("GetClanOf", ownerid);
+                if (playerclan != null && ownerclan != null)
+                {
+                    if (playerclan == ownerclan)
+                    {
+                        return true;
+                    }
+                }
+            }
+            if (configData.useTeams)
+            {
+                BasePlayer player = BasePlayer.FindByID(playerid);
+                if (player != null)
+                {
+                    if (player.currentTeam != 0)
+                    {
+                        RelationshipManager.PlayerTeam playerTeam = RelationshipManager.Instance.FindTeam(player.currentTeam);
+                        if (playerTeam != null)
+                        {
+                            if (playerTeam.members.Contains(ownerid))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
         }
         #endregion
 
@@ -102,6 +157,14 @@ namespace Oxide.Plugins
                     t.gameObject.AddComponent<AnimalTarget>();
                 }
             }
+            if(configData.npcTurrets)
+            {
+                var nturrets = UnityEngine.Object.FindObjectsOfType<NPCAutoTurret>();
+                foreach (var t in nturrets)
+                {
+                    t.gameObject.AddComponent<AnimalTargetNPC>();
+                }
+            }
         }
 
         void Unload()
@@ -114,6 +177,24 @@ namespace Oxide.Plugins
                     var at = t.gameObject.GetComponent<AnimalTarget>();
                     if (at != null) UnityEngine.Object.Destroy(at);
                 }
+            }
+
+            var nturrets = UnityEngine.Object.FindObjectsOfType<NPCAutoTurret>();
+            foreach(var t in nturrets)
+            {
+                if (t != null)
+                {
+                    var at = t.gameObject.GetComponent<AnimalTargetNPC>();
+                    if (at != null) UnityEngine.Object.Destroy(at);
+                }
+            }
+        }
+
+        void OnEntitySpawned(NPCAutoTurret turret)
+        {
+            if (configData.npcTurrets)
+            {
+                turret.gameObject.AddComponent<AnimalTargetNPC>();
             }
         }
 
@@ -140,6 +221,37 @@ namespace Oxide.Plugins
         private void SaveData()
         {
             Interface.Oxide.DataFileSystem.WriteObject(Name + "/disabledTurrets", disabledTurrets);
+        }
+
+        class AnimalTargetNPC : MonoBehaviour
+        {
+            private NPCAutoTurret turret;
+
+            private void Awake()
+            {
+                turret = GetComponent<NPCAutoTurret>();
+                if (turret != null) InvokeRepeating("FindTargets", 5f, 1.0f);
+            }
+
+            internal void FindTargets()
+            {
+                if (Instance.disabledTurrets.Contains(turret.net.ID)) return;
+                if (turret.target == null)
+                {
+                    List<BaseAnimalNPC> localpig = new List<BaseAnimalNPC>();
+                    Vis.Entities(turret.eyePos.transform.position, 30f, localpig);
+
+                    foreach (BaseCombatEntity bce in localpig)
+                    {
+                        if (string.IsNullOrEmpty(bce.ShortPrefabName)) continue;
+                        if (turret.ObjectVisible(bce) && !Instance.configData.exclusions.Contains(bce.ShortPrefabName))
+                        {
+                            turret.target = bce;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         class AnimalTarget : MonoBehaviour
@@ -201,8 +313,23 @@ namespace Oxide.Plugins
             [JsonProperty(PropertyName = "Animal targeting enabled by default")]
             public bool defaultEnabled = true;
 
+            [JsonProperty(PropertyName = "Animal targeting by NPC AutoTurrets")]
+            public bool npcTurrets = false;
+
             [JsonProperty(PropertyName = "Animals to exclude")]
             public List<string> exclusions;
+
+            [JsonProperty(PropertyName = "Honor Friends/Clans/Teams for commands")]
+            public bool HonorRelationships = false;
+
+            [JsonProperty(PropertyName = "Use Friends plugins for commands")]
+            public bool useFriends = false;
+
+            [JsonProperty(PropertyName = "Use Clans plugins for commands")]
+            public bool useClans = false;
+
+            [JsonProperty(PropertyName = "Use Rust teams for commands")]
+            public bool useTeams = false;
 
             public VersionNumber Version;
         }
