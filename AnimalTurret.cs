@@ -29,13 +29,14 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.2")]
+    [Info("AnimalTurret", "RFC1920", "1.0.3")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
         private ConfigData configData;
         private List<uint> disabledTurrets = new List<uint>();
         public static AnimalTurret Instance;
+        private bool enabled = false;
 
         [PluginReference]
         private readonly Plugin Friends, Clans, RustIO;
@@ -148,6 +149,7 @@ namespace Oxide.Plugins
             Instance = this;
             LoadConfigVariables();
             LoadData();
+            enabled = true;
             var turrets = UnityEngine.Object.FindObjectsOfType<AutoTurret>();
             foreach(var t in turrets)
             {
@@ -192,14 +194,17 @@ namespace Oxide.Plugins
 
         void OnEntitySpawned(NPCAutoTurret turret)
         {
+            if (!enabled) return;
             if (configData.npcTurrets)
             {
+                if (turret == null) return;
                 turret.gameObject.AddComponent<AnimalTargetNPC>();
             }
         }
 
         void OnEntitySpawned(AutoTurret turret)
         {
+            if (!enabled) return;
             if (turret.OwnerID == 0) return;
             var player = BasePlayer.Find(turret.OwnerID.ToString());
 
