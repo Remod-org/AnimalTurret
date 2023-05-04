@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.5")]
+    [Info("AnimalTurret", "RFC1920", "1.0.6")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -61,11 +61,11 @@ namespace Oxide.Plugins
             Vis.Entities(player.transform.position, 3f, foundTurrets);
             foreach (AutoTurret t in foundTurrets)
             {
-                if (!disabledTurrets.Contains(t.net.ID))
+                if (!disabledTurrets.Contains((uint)t.net.ID.Value))
                 {
                     if (player.userID == t.OwnerID || IsFriend(player.userID, t.OwnerID))
                     {
-                        disabledTurrets.Add(t.net.ID);
+                        disabledTurrets.Add((uint)t.net.ID.Value);
                         AnimalTarget at = t.gameObject.GetComponent<AnimalTarget>();
                         if (at != null) UnityEngine.Object.Destroy(at);
                         SaveData();
@@ -82,11 +82,11 @@ namespace Oxide.Plugins
             Vis.Entities(player.transform.position, 3f, foundTurrets);
             foreach(AutoTurret t in foundTurrets)
             {
-                if (disabledTurrets.Contains(t.net.ID))
+                if (disabledTurrets.Contains((uint)t.net.ID.Value))
                 {
                     if (player.userID == t.OwnerID || IsFriend(player.userID, t.OwnerID))
                     {
-                        disabledTurrets.Remove(t.net.ID);
+                        disabledTurrets.Remove((uint)t.net.ID.Value);
                         t.gameObject.AddComponent<AnimalTarget>();
                         SaveData();
                         Message(player.IPlayer, "enabled");
@@ -121,17 +121,10 @@ namespace Oxide.Plugins
             }
             if (configData.useTeams)
             {
-                BasePlayer player = BasePlayer.FindByID(playerid);
-                if (player != null && player.currentTeam != 0)
+                RelationshipManager.PlayerTeam playerTeam = RelationshipManager.ServerInstance.FindPlayersTeam(playerid);
+                if (playerTeam?.members.Contains(ownerid) == true)
                 {
-                    RelationshipManager.PlayerTeam playerTeam = RelationshipManager.ServerInstance.FindTeam(player.currentTeam);
-                    if (playerTeam != null)
-                    {
-                        if (playerTeam.members.Contains(ownerid))
-                        {
-                            return true;
-                        }
-                    }
+                    return true;
                 }
             }
             return false;
@@ -149,23 +142,23 @@ namespace Oxide.Plugins
             {
                 foreach (NPCAutoTurret t in UnityEngine.Object.FindObjectsOfType<NPCAutoTurret>())
                 {
-                    if (!processed.Contains(t.net.ID))
+                    if (!processed.Contains((uint)t.net.ID.Value))
                     {
                         if (configData.debug) Puts($"Arming NPC turret {t.net.ID} for animal targeting.");
                         t.gameObject.AddComponent<AnimalTargetNPC>();
-                        processed.Add(t.net.ID);
+                        processed.Add((uint)t.net.ID.Value);
                     }
                 }
             }
 
             foreach (AutoTurret t in UnityEngine.Object.FindObjectsOfType<AutoTurret>())
             {
-                if (disabledTurrets.Contains(t.net.ID)) continue;
-                if (configData.defaultEnabled && !processed.Contains(t.net.ID))
+                if (disabledTurrets.Contains((uint)t.net.ID.Value)) continue;
+                if (configData.defaultEnabled && !processed.Contains((uint)t.net.ID.Value))
                 {
                     if (configData.debug) Puts($"Arming turret {t.net.ID} for animal targeting.");
                     t.gameObject.AddComponent<AnimalTarget>();
-                    processed.Add(t.net.ID);
+                    processed.Add((uint)t.net.ID.Value);
                 }
             }
         }
@@ -241,7 +234,7 @@ namespace Oxide.Plugins
 
             internal void FindTargets()
             {
-                if (Instance.disabledTurrets.Contains(turret.net.ID)) return;
+                if (Instance.disabledTurrets.Contains((uint)turret.net.ID.Value)) return;
                 if (turret.target == null)
                 {
                     List<BaseAnimalNPC> localpig = new List<BaseAnimalNPC>();
@@ -274,7 +267,7 @@ namespace Oxide.Plugins
 
             internal void FindTargets()
             {
-                if (Instance.disabledTurrets.Contains(turret.net.ID)) return;
+                if (Instance.disabledTurrets.Contains((uint)turret.net.ID.Value)) return;
                 if (turret.target == null && turret.IsPowered())
                 {
                     List<BaseAnimalNPC> localpig = new List<BaseAnimalNPC>();
