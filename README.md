@@ -11,13 +11,20 @@ The range matches what is in the game code for the turrets for all other targets
 ```json
 {
   "Animal targeting enabled by default": true,
+  "Animal targeting by NPC AutoTurrets": false,
   "Animals to exclude": [
     "chicken"
   ],
+  "Honor Friends/Clans/Teams for commands": false,
+  "Use Friends plugins for commands": false,
+  "Use Clans plugins for commands": false,
+  "Use Rust teams for commands": false,
+  "Update period for turrets": 5f,
+  "debug": true,
   "Version": {
     "Major": 1,
     "Minor": 0,
-    "Patch": 1
+    "Patch": 7
   }
 }
 ```

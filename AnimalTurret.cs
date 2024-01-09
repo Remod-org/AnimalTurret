@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.6")]
+    [Info("AnimalTurret", "RFC1920", "1.0.7")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -153,6 +153,7 @@ namespace Oxide.Plugins
 
             foreach (AutoTurret t in UnityEngine.Object.FindObjectsOfType<AutoTurret>())
             {
+                if (processed.Contains((uint)t.net.ID.Value)) continue;
                 if (disabledTurrets.Contains((uint)t.net.ID.Value)) continue;
                 if (configData.defaultEnabled && !processed.Contains((uint)t.net.ID.Value))
                 {
@@ -213,12 +214,12 @@ namespace Oxide.Plugins
 
         private void LoadData()
         {
-            disabledTurrets = Interface.Oxide.DataFileSystem.ReadObject<List<uint>>(Name + "/disabledTurrets");
+            disabledTurrets = Interface.GetMod().DataFileSystem.ReadObject<List<uint>>(Name + "/disabledTurrets");
         }
 
         private void SaveData()
         {
-            Interface.Oxide.DataFileSystem.WriteObject(Name + "/disabledTurrets", disabledTurrets);
+            Interface.GetMod().DataFileSystem.WriteObject(Name + "/disabledTurrets", disabledTurrets);
         }
 
         private class AnimalTargetNPC : MonoBehaviour
@@ -229,7 +230,8 @@ namespace Oxide.Plugins
             {
                 turret = GetComponent<NPCAutoTurret>();
                 //turret.SetFlag(BaseEntity.Flags.Reserved1, true); // If false they will attack players regardless of hostility.
-                if (turret != null) InvokeRepeating("FindTargets", 5f, 1.0f);
+                float period = Instance.configData.scanPeriod > 0 ? Instance.configData.scanPeriod : 5f;
+                if (turret != null) InvokeRepeating("FindTargets", 5f, period);
             }
 
             internal void FindTargets()
@@ -296,6 +298,10 @@ namespace Oxide.Plugins
         {
             configData = Config.ReadObject<ConfigData>();
 
+            if (configData.scanPeriod == 0)
+            {
+                configData.scanPeriod = 5f;
+            }
             configData.Version = Version;
             SaveConfig(configData);
         }
@@ -312,6 +318,7 @@ namespace Oxide.Plugins
                 useClans = false,
                 useTeams = false,
                 exclusions = new List<string>() { "chicken" },
+                scanPeriod = 5f,
                 Version = Version
             };
             SaveConfig(config);
@@ -344,6 +351,9 @@ namespace Oxide.Plugins
 
             [JsonProperty(PropertyName = "Use Rust teams for commands")]
             public bool useTeams;
+
+            [JsonProperty(PropertyName = "Update period for turrets")]
+            public float scanPeriod;
 
             public bool debug;
             public VersionNumber Version;
