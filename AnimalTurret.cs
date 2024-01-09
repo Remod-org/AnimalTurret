@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.7")]
+    [Info("AnimalTurret", "RFC1920", "1.0.8")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -264,7 +264,8 @@ namespace Oxide.Plugins
             private void Awake()
             {
                 turret = GetComponent<AutoTurret>();
-                if (turret != null) InvokeRepeating("FindTargets", 5f, 1.0f);
+                float period = Instance.configData.scanPeriod > 0 ? Instance.configData.scanPeriod : 5f;
+                if (turret != null) InvokeRepeating("FindTargets", 5f, period);
             }
 
             internal void FindTargets()
