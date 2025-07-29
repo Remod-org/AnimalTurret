@@ -27,12 +27,12 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.9")]
+    [Info("AnimalTurret", "RFC1920", "1.0.10")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
         private ConfigData configData;
-        private List<uint> disabledTurrets = new List<uint>();
+        private List<uint> disabledTurrets = new();
         public static AnimalTurret Instance;
         private bool enabled;
 
@@ -57,7 +57,7 @@ namespace Oxide.Plugins
         [ChatCommand("noat")]
         private void cmdDisableTurret(BasePlayer player, string command, string[] args)
         {
-            List<AutoTurret> foundTurrets = new List<AutoTurret>();
+            List<AutoTurret> foundTurrets = new();
             Vis.Entities(player.transform.position, 3f, foundTurrets);
             foreach (AutoTurret t in foundTurrets)
             {
@@ -78,7 +78,7 @@ namespace Oxide.Plugins
         [ChatCommand("doat")]
         private void cmdEnableTurret(BasePlayer player, string command, string[] args)
         {
-            List<AutoTurret> foundTurrets = new List<AutoTurret>();
+            List<AutoTurret> foundTurrets = new();
             Vis.Entities(player.transform.position, 3f, foundTurrets);
             foreach (AutoTurret t in foundTurrets)
             {
@@ -137,7 +137,7 @@ namespace Oxide.Plugins
             LoadConfigVariables();
             LoadData();
             enabled = true;
-            List<uint> processed = new List<uint>();
+            List<uint> processed = new();
             if (configData.npcTurrets)
             {
                 foreach (NPCAutoTurret t in UnityEngine.Object.FindObjectsOfType<NPCAutoTurret>())
@@ -240,17 +240,26 @@ namespace Oxide.Plugins
                 if (Instance.disabledTurrets.Contains((uint)turret.net.ID.Value)) return;
                 if (turret.target == null)
                 {
-                    List<BaseAnimalNPC> localpig = new List<BaseAnimalNPC>();
+                    List<BaseAnimalNPC> localpig = new();
                     Vis.Entities(turret.eyePos.transform.position, 30f, localpig);
 
                     foreach (BaseAnimalNPC bce in localpig)
                     {
+                        if (bce.IsDead())
+                        {
+                            if (Instance.configData.debug) Instance.Puts($"NPCAutoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
+                            bce.unHostileTime = 0;
+                            //turret.target = null;
+                            turret.SetTarget(null);
+                            continue;
+                        }
                         if (string.IsNullOrEmpty(bce.ShortPrefabName)) continue;
                         if (turret.ObjectVisible(bce) && !Instance.configData.exclusions.Contains(bce.ShortPrefabName))
                         {
                             if (Instance.configData.debug) Instance.Puts($"NPCAutoturret {turret.net.ID} targeting {bce.ShortPrefabName}({bce.net.ID})");
-                            turret.target = bce;
-                            bce.MarkHostileFor();
+                            //turret.target = bce;
+                            bce.MarkHostileFor(300f);
+                            Instance.NextTick(() => { turret.SetTarget(bce); });
                             break;
                         }
                     }
@@ -274,19 +283,27 @@ namespace Oxide.Plugins
                 if (Instance.disabledTurrets.Contains((uint)turret.net.ID.Value)) return;
                 if (turret.target == null && turret.IsPowered())
                 {
-                    List<BaseAnimalNPC> localpig = new List<BaseAnimalNPC>();
+                    List<BaseAnimalNPC> localpig = new();
                     Vis.Entities(turret.eyePos.transform.position, 30f, localpig);
 
                     foreach (BaseAnimalNPC bce in localpig)
                     {
                         if (string.IsNullOrEmpty(bce.ShortPrefabName)) continue;
+                        if (bce.IsDead())
+                        {
+                            if (Instance.configData.debug) Instance.Puts($"Autoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
+                            bce.unHostileTime = 0;
+                            //turret.target = null;
+                            turret.SetTarget(null);
+                            continue;
+                        }
                         if (turret.ObjectVisible(bce) && !Instance.configData.exclusions.Contains(bce.ShortPrefabName))
                         {
                             if (Instance.configData.debug) Instance.Puts($"Autoturret {turret.net.ID} targeting {bce.ShortPrefabName}({bce.net.ID})");
-                            turret.target = bce;
+                            Instance.NextTick(() => { turret.SetTarget(bce); });
                             if (!turret.PeacekeeperMode())
                             {
-                                bce.MarkHostileFor();
+                                bce.MarkHostileFor(300f);
                             }
                             break;
                         }
@@ -311,7 +328,7 @@ namespace Oxide.Plugins
         protected override void LoadDefaultConfig()
         {
             Puts("Creating new config file.");
-            ConfigData config = new ConfigData
+            ConfigData config = new()
             {
                 defaultEnabled = true,
                 npcTurrets = false,
