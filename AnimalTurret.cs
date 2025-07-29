@@ -1,7 +1,7 @@
 #region License (GPL v2)
 /*
     AnimalTurret - Make Rust autoturrets target animals (again)
-    Copyright (c) 2021-2023 RFC1920 <desolationoutpostpve@gmail.com>
+    Copyright (c) 2021 RFC1920 <desolationoutpostpve@gmail.com>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License v2.0.
@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.8")]
+    [Info("AnimalTurret", "RFC1920", "1.0.9")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -80,7 +80,7 @@ namespace Oxide.Plugins
         {
             List<AutoTurret> foundTurrets = new List<AutoTurret>();
             Vis.Entities(player.transform.position, 3f, foundTurrets);
-            foreach(AutoTurret t in foundTurrets)
+            foreach (AutoTurret t in foundTurrets)
             {
                 if (disabledTurrets.Contains((uint)t.net.ID.Value))
                 {
@@ -153,6 +153,7 @@ namespace Oxide.Plugins
 
             foreach (AutoTurret t in UnityEngine.Object.FindObjectsOfType<AutoTurret>())
             {
+                if (t is NPCAutoTurret) continue;
                 if (processed.Contains((uint)t.net.ID.Value)) continue;
                 if (disabledTurrets.Contains((uint)t.net.ID.Value)) continue;
                 if (configData.defaultEnabled && !processed.Contains((uint)t.net.ID.Value))
