@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.10")]
+    [Info("AnimalTurret", "RFC1920", "1.0.11")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -131,6 +131,11 @@ namespace Oxide.Plugins
         }
         #endregion
 
+        public void DoLog(string msg)
+        {
+            if (configData.debug) Puts(msg);
+        }
+
         private void OnServerInitialized()
         {
             Instance = this;
@@ -144,8 +149,9 @@ namespace Oxide.Plugins
                 {
                     if (!processed.Contains((uint)t.net.ID.Value))
                     {
-                        if (configData.debug) Puts($"Arming NPC turret {t.net.ID} for animal targeting.");
+                        Instance.DoLog($"Arming NPC turret {t.net.ID} for animal targeting.");
                         t.gameObject.AddComponent<AnimalTargetNPC>();
+                        //t.sightRange = 100f;
                         processed.Add((uint)t.net.ID.Value);
                     }
                 }
@@ -158,8 +164,9 @@ namespace Oxide.Plugins
                 if (disabledTurrets.Contains((uint)t.net.ID.Value)) continue;
                 if (configData.defaultEnabled && !processed.Contains((uint)t.net.ID.Value))
                 {
-                    if (configData.debug) Puts($"Arming turret {t.net.ID} for animal targeting.");
+                    Instance.DoLog($"Arming turret {t.net.ID} for animal targeting.");
                     t.gameObject.AddComponent<AnimalTarget>();
+                    //t.sightRange = 100f;
                     processed.Add((uint)t.net.ID.Value);
                 }
             }
@@ -184,6 +191,13 @@ namespace Oxide.Plugins
                     if (at != null) UnityEngine.Object.Destroy(at);
                 }
             }
+        }
+
+        private object OnTurretTarget(AutoTurret turret, BaseCombatEntity entity)
+        {
+            if (entity == null) return null;
+            DoLog($"OnTurretTarget - {turret.net.ID.Value} targeting {entity?.ShortPrefabName}:{entity.net?.ID.Value}");
+            return null;
         }
 
         private void OnEntitySpawned(NPCAutoTurret turret)
@@ -247,7 +261,7 @@ namespace Oxide.Plugins
                     {
                         if (bce.IsDead())
                         {
-                            if (Instance.configData.debug) Instance.Puts($"NPCAutoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
+                            Instance.DoLog($"NPCAutoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
                             bce.unHostileTime = 0;
                             //turret.target = null;
                             turret.SetTarget(null);
@@ -256,10 +270,12 @@ namespace Oxide.Plugins
                         if (string.IsNullOrEmpty(bce.ShortPrefabName)) continue;
                         if (turret.ObjectVisible(bce) && !Instance.configData.exclusions.Contains(bce.ShortPrefabName))
                         {
-                            if (Instance.configData.debug) Instance.Puts($"NPCAutoturret {turret.net.ID} targeting {bce.ShortPrefabName}({bce.net.ID})");
+                            Instance.DoLog($"NPCAutoturret {turret.net.ID} targeting {bce.ShortPrefabName}({bce.net.ID})");
                             //turret.target = bce;
                             bce.MarkHostileFor(300f);
-                            Instance.NextTick(() => { turret.SetTarget(bce); });
+                            //Instance.NextTick(() => { turret.SetTarget(bce); });
+                            turret.SetTarget(bce);
+                            turret.targetTrigger.entityContents.Add(bce);
                             break;
                         }
                     }
@@ -291,19 +307,22 @@ namespace Oxide.Plugins
                         if (string.IsNullOrEmpty(bce.ShortPrefabName)) continue;
                         if (bce.IsDead())
                         {
-                            if (Instance.configData.debug) Instance.Puts($"Autoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
+                            Instance.DoLog($"Player Autoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
                             bce.unHostileTime = 0;
                             //turret.target = null;
                             turret.SetTarget(null);
                             continue;
                         }
-                        if (turret.ObjectVisible(bce) && !Instance.configData.exclusions.Contains(bce.ShortPrefabName))
+                        //if (turret.ObjectVisible(bce) && !Instance.configData.exclusions.Contains(bce.ShortPrefabName))
+                        if (!Instance.configData.exclusions.Contains(bce.ShortPrefabName))
                         {
-                            if (Instance.configData.debug) Instance.Puts($"Autoturret {turret.net.ID} targeting {bce.ShortPrefabName}({bce.net.ID})");
-                            Instance.NextTick(() => { turret.SetTarget(bce); });
+                            Instance.DoLog($"Player Autoturret {turret.net.ID} targeting {bce.ShortPrefabName}({bce.net.ID})");
+                            //Instance.NextTick(() => { turret.SetTarget(bce); });
                             if (!turret.PeacekeeperMode())
                             {
                                 bce.MarkHostileFor(300f);
+                                turret.SetTarget(bce);
+                                turret.targetTrigger.entityContents.Add(bce);
                             }
                             break;
                         }
