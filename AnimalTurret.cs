@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.11")]
+    [Info("AnimalTurret", "RFC1920", "1.0.12")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -145,7 +145,7 @@ namespace Oxide.Plugins
             List<uint> processed = new();
             if (configData.npcTurrets)
             {
-                foreach (NPCAutoTurret t in UnityEngine.Object.FindObjectsOfType<NPCAutoTurret>())
+                foreach (NPCAutoTurret t in UnityEngine.Object.FindObjectsByType(typeof(NPCAutoTurret), FindObjectsSortMode.None))
                 {
                     if (!processed.Contains((uint)t.net.ID.Value))
                     {
@@ -157,7 +157,7 @@ namespace Oxide.Plugins
                 }
             }
 
-            foreach (AutoTurret t in UnityEngine.Object.FindObjectsOfType<AutoTurret>())
+            foreach (AutoTurret t in UnityEngine.Object.FindObjectsByType(typeof(AutoTurret), FindObjectsSortMode.None))
             {
                 if (t is NPCAutoTurret) continue;
                 if (processed.Contains((uint)t.net.ID.Value)) continue;
@@ -174,7 +174,7 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
-            foreach (AutoTurret t in UnityEngine.Object.FindObjectsOfType<AutoTurret>())
+            foreach (AutoTurret t in UnityEngine.Object.FindObjectsByType(typeof(AutoTurret), FindObjectsSortMode.None))
             {
                 if (t != null)
                 {
@@ -183,7 +183,7 @@ namespace Oxide.Plugins
                 }
             }
 
-            foreach (NPCAutoTurret t in UnityEngine.Object.FindObjectsOfType<NPCAutoTurret>())
+            foreach (NPCAutoTurret t in UnityEngine.Object.FindObjectsByType(typeof(NPCAutoTurret), FindObjectsSortMode.None))
             {
                 if (t != null)
                 {
@@ -251,6 +251,7 @@ namespace Oxide.Plugins
 
             internal void FindTargets()
             {
+                if (turret == null) return;
                 if (Instance.disabledTurrets.Contains((uint)turret.net.ID.Value)) return;
                 if (turret.target == null)
                 {
@@ -296,6 +297,7 @@ namespace Oxide.Plugins
 
             internal void FindTargets()
             {
+                if (turret == null) return;
                 if (Instance.disabledTurrets.Contains((uint)turret.net.ID.Value)) return;
                 if (turret.target == null && turret.IsPowered())
                 {
