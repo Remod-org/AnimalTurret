@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("AnimalTurret", "RFC1920", "1.0.12")]
+    [Info("AnimalTurret", "RFC1920", "1.0.13")]
     [Description("Make (npc)autoturrets target animals in range")]
     internal class AnimalTurret : RustPlugin
     {
@@ -260,6 +260,7 @@ namespace Oxide.Plugins
 
                     foreach (BaseAnimalNPC bce in localpig)
                     {
+                        if (!bce.enabled) continue;
                         if (bce.IsDead())
                         {
                             Instance.DoLog($"NPCAutoturret {turret.net.ID} target {bce.ShortPrefabName}({bce.net.ID}) is dead.");
@@ -306,6 +307,7 @@ namespace Oxide.Plugins
 
                     foreach (BaseAnimalNPC bce in localpig)
                     {
+                        if (!bce.enabled) continue;
                         if (string.IsNullOrEmpty(bce.ShortPrefabName)) continue;
                         if (bce.IsDead())
                         {
